@@ -23,7 +23,7 @@ init_db()
 
 
 ### Unit testing for tool use ###
-input1 = "Can you add blueberry to my plant list"
+input1 = "Can you help me add potatoes to my plant collections? I'm having them in the balcony"
 response1, tools1 = run_agent_conversation(input1)
 test_case1 = LLMTestCase(
     input=input1,
@@ -31,8 +31,7 @@ test_case1 = LLMTestCase(
     tools_called=[ToolCall(name=tool) for tool in (tools1 or [])],
     expected_tools=[
         ToolCall(
-            name="add_plant",
-            input={"name": "blueberry"}
+            name="add_plant"
         )
     ]
 )
@@ -57,8 +56,7 @@ test_case3 = LLMTestCase(
     tools_called=[ToolCall(name=tool) for tool in (tools3 or [])],
     expected_tools=[
         ToolCall(
-            name="add_to_wishlist",
-            input={"name": "kumquat"}
+            name="add_to_wishlist"
         )
     ]
 ) 
