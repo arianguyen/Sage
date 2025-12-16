@@ -23,7 +23,7 @@ init_db()
 
 
 ### Unit testing for tool use ###
-input1 = "Can you add corriander to my plant list"
+input1 = "Can you add blueberry to my plant list"
 response1, tools1 = run_agent_conversation(input1)
 test_case1 = LLMTestCase(
     input=input1,
@@ -32,7 +32,7 @@ test_case1 = LLMTestCase(
     expected_tools=[
         ToolCall(
             name="add_plant",
-            input={"name": "Lemon Dwarf"}
+            input={"name": "blueberry"}
         )
     ]
 )
@@ -121,16 +121,23 @@ def run_evaluation():
 if __name__ == "__main__":
     print("Running Sage agent evaluation...")
     print("Runing tests for tool use validation")
-    #tool_use_results = run_test_cases([test_case2, test_case3])
+    tool_use_results = run_test_cases([test_case2, test_case3])
+
+    # Convert results to CSV
+    if os.path.exists('.deepeval/.deepeval-cache.json'):
+        convert_deepeval_to_csv('.deepeval/.deepeval-cache.json', 'deepeval_cache.csv')
+        print("Cache results exported to deepeval_cache.csv")
+    
 
     print("Runing tests for multi-turn evaluation")
-    #multi_turn_results = run_evaluation()
+    multi_turn_results = run_evaluation()
     print("\nEvaluation completed!")
     
     # Convert results to CSV
     if os.path.exists('.deepeval/.latest_test_run.json'):
         convert_deepeval_to_csv('.deepeval/.latest_test_run.json', 'deepeval_results.csv')
         print("Results exported to deepeval_results.csv")
+
     
     # Restore database
     if os.path.exists('plants_backup.db'):
