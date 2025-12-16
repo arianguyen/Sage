@@ -12,7 +12,15 @@ An AI-powered conversational agent for plant care suggestions, scheduling, and r
 
 ## Setup
 
-1. Install dependencies:
+This was tested on Python 3.13. Best to use a virtual environment to install dependencies.
+
+1. Create and activate virtual environment:
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
@@ -28,6 +36,8 @@ python app.py
 ```
 
 4. Open browser to `http://localhost:5001`
+
+**Note**: Sample data is included for demonstration. To start fresh, delete `plants.db` before running the app.
 
 ## Agent Tools
 
