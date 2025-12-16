@@ -1,12 +1,12 @@
 from flask import Flask, request, jsonify, render_template_string
-import os
 import uuid
 from dotenv import load_dotenv
+load_dotenv()
+
 from database import init_db, get_db
 from agent import run_agent_conversation
 from datetime import datetime, timedelta
 
-load_dotenv()
 app = Flask(__name__)
 init_db()
 
@@ -19,7 +19,8 @@ HTML_TEMPLATE = """
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
         .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .header { padding: 20px; text-align: center; border-bottom: 1px solid #eee; }
-        .agent-icon { width: 60px; height: 60px; border-radius: 50%; background: #4CAF50; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 10px; }
+        .agent-icon { width: 100px; height: 100px; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto; }
+        .agent-icon img { width: 100px; height: 100px; }
         .chat-container { height: 400px; overflow-y: auto; padding: 20px; }
         .message { margin: 10px 0; padding: 10px 15px; border-radius: 15px; max-width: 70%; }
         .message.user { background: #C76439; color: white; margin-left: auto; text-align: right; }
@@ -43,8 +44,9 @@ HTML_TEMPLATE = """
 <body>
     <div class="container">
         <div class="header">
-            <div class="agent-icon">🌱</div>
-            <h1>Sage</h1>
+            <div class="agent-icon">
+                <img src="/sage.svg" alt="Sage" onerror="this.outerHTML='🌱';">
+            </div>
         </div>
         
         <div class="chat-container" id="chat"></div>
@@ -173,7 +175,7 @@ HTML_TEMPLATE = """
         }
         
         // Add initial greeting first
-        document.getElementById('chat').innerHTML = '<div class="message assistant">Hi there! 🌱 I\\'m Sage, your plant care buddy. I\\'m here to help you care for your plants, set up watering schedules, and suggest new green friends for your collection. What can I help you with today?</div>';
+        document.getElementById('chat').innerHTML = '<div class="message assistant">Hi there! I\\'m Sage, your plant care buddy. I\\'m here to help you care for your plants, set up watering schedules, and suggest new green friends for your collection. What can I help you with today?</div>';
         
         // Load data on page load
         loadSchedule();
@@ -192,6 +194,11 @@ HTML_TEMPLATE = """
 def index():
     return render_template_string(HTML_TEMPLATE)
 
+@app.route('/sage.svg')
+def sage_icon():
+    from flask import send_file
+    return send_file('sage.svg', mimetype='image/svg+xml')
+
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
@@ -199,20 +206,17 @@ def chat():
     trace_id = str(uuid.uuid4())
     
     try:
-        response = run_agent_conversation(user_message, trace_id=trace_id)
-        return jsonify({'response': response})
+        response, tools_used = run_agent_conversation(user_message, trace_id)
+        return jsonify({'response': response, 'tools_used': tools_used or []})
     except Exception as e:
         return jsonify({'response': f'Error: {str(e)}'})
 
 @app.route('/api/schedule', methods=['GET'])
 def get_schedule():
     try:
-        print("Schedule API called")
         conn = get_db()
-        print("Database connected")
         
         count = conn.execute('SELECT COUNT(*) FROM care_schedules').fetchone()[0]
-        print(f"Care schedules count: {count}")
         
         if count == 0:
             conn.close()
@@ -227,7 +231,6 @@ def get_schedule():
         """
         
         results = conn.execute(query).fetchall()
-        print(f"Query results: {len(results)} rows")
         conn.close()
         
         schedule_data = []
@@ -246,26 +249,20 @@ def get_schedule():
                     'last_completed': row[3],
                     'days_until': days_until
                 })
-            except Exception as e:
-                print(f"Error processing row: {e}")
+            except Exception:
                 continue
         
-        print(f"Returning {len(schedule_data)} schedule items")
         return jsonify(schedule_data)
         
     except Exception as e:
-        print(f"Schedule API error: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/wishlist', methods=['GET'])
 def get_wishlist():
     try:
-        print("Wishlist API called")
         conn = get_db()
-        print("Database connected for wishlist")
         
         count = conn.execute('SELECT COUNT(*) FROM wishlist').fetchone()[0]
-        print(f"Wishlist count: {count}")
         
         if count == 0:
             conn.close()
@@ -275,11 +272,9 @@ def get_wishlist():
         conn.close()
         
         result = [dict(w) for w in wishlist]
-        print(f"Returning {len(result)} wishlist items")
         return jsonify(result)
         
     except Exception as e:
-        print(f"Wishlist API error: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

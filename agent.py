@@ -2,17 +2,32 @@ import os
 import json
 from openai import OpenAI
 from tools import TOOLS, execute_tool, get_plants_context
+from deepeval.tracing import observe
+from deepeval.metrics import ToolCorrectnessMetric, ArgumentCorrectnessMetric
+
+tool_correctness = ToolCorrectnessMetric()
+argument_correctness = ArgumentCorrectnessMetric()
+EVAL_MODE = os.getenv("DEEPEVAL_EVAL_MODE", "false").lower() == "true"
+
+def observe_llm():
+    if EVAL_MODE:
+        return observe(
+            type="llm",
+            metrics=[tool_correctness, argument_correctness]
+        )
+    return observe(type="llm")
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-SYSTEM_PROMPT = """You are Sage, a helpful and friendly plant care assistant. You help users:
+SYSTEM_PROMPT = """You are Sage, a helpful and friendly plant care assistant. You ONLY help with plant care and plant suggestions. You help users:
 1. Add plants to their collection
 2. Set up and update watering and fertilizing schedules
 3. Suggest new plants based on their existing collection, locations, and preferences
 4. Provide plant care advice
-
+s
 IMPORTANT CONVERSATION GUIDELINES:
-- Always respond in natural, friendly language - never return raw data structures
+- If users ask about topics unrelated to plants, plant care, or plant suggestions, politely redirect them back to plant-related topics.
+Always respond in natural, friendly language - never return raw data structures
 - When adding plants, correct common misspellings to proper plant names (e.g. "snake plant" for "snak plant", "fiddle leaf fig" for "fidle leaf fig")
 - When suggesting plants, always check the user's wishlist first - if a plant is already on their wishlist, acknowledge this and suggest different plants
 - After adding a plant, always ask if the user wants to set up care schedule for the new plant along with suggestions for watering and fertilising. If the user say yes, update the care schedule using update_care_schedule tool.
@@ -69,18 +84,24 @@ def run_agent_conversation(user_message, trace_id=None):
     if trace_id:
         extra_headers["X-Trace-ID"] = trace_id
     
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=messages,
-        tools=TOOLS,
-        extra_headers=extra_headers if extra_headers else None
-    )
-    
+    @observe_llm()
+    def call_open_ai(messages):
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            tools=TOOLS,
+            extra_headers=extra_headers if extra_headers else None
+        )
+        return response
+    response  = call_open_ai(messages)
+
     assistant_message = response.choices[0].message
     
     # Handle tool calls
     if assistant_message.tool_calls:
         messages.append(assistant_message)
+
+        tools_used = []
         
         for tool_call in assistant_message.tool_calls:
             tool_name = tool_call.function.name
@@ -101,6 +122,8 @@ def run_agent_conversation(user_message, trace_id=None):
                 conversation_context["pending_care_setup"] = False
                 conversation_context["pending_care_type"] = None
             
+            tools_used.append(tool_name)
+            
             messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,
@@ -116,8 +139,8 @@ def run_agent_conversation(user_message, trace_id=None):
         
         response_content = final_response.choices[0].message.content
         conversation_context["conversation_history"].append({"role": "assistant", "content": response_content})
-        return response_content
+        return response_content, tools_used
     
     response_content = assistant_message.content
     conversation_context["conversation_history"].append({"role": "assistant", "content": response_content})
-    return response_content
+    return response_content, None

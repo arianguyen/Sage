@@ -1,6 +1,8 @@
 from database import get_db
 from datetime import datetime, timedelta
+from deepeval.tracing import observe
 
+@observe(type="tool")
 def add_plant_tool(name, location=None, species=None, notes=None):
     """Add a new plant to the user's collection"""
     conn = get_db()
@@ -13,6 +15,7 @@ def add_plant_tool(name, location=None, species=None, notes=None):
     conn.close()
     return {"success": True, "plant_id": plant_id, "message": f"Added {name} to your collection"}
 
+@observe(type="tool")
 def update_care_schedule_tool(plant_id, watering_days=None, fertilizing_days=None):
     """Update or create care schedule for a plant"""
     conn = get_db()
@@ -41,6 +44,7 @@ def update_care_schedule_tool(plant_id, watering_days=None, fertilizing_days=Non
     conn.close()
     return {"success": True, "message": "Care schedule updated"}
 
+@observe(type="tool")
 def get_care_schedule_tool():
     """Get detailed care schedule with next care dates including fertilizing"""
     conn = get_db()
@@ -78,6 +82,7 @@ def get_care_schedule_tool():
     
     return {"care_schedule": schedule_info}
 
+@observe(type="tool")
 def add_to_wishlist_tool(name, notes=None):
     """Add a plant to the wishlist"""
     conn = get_db()
@@ -97,6 +102,7 @@ def add_to_wishlist_tool(name, notes=None):
     conn.close()
     return {"success": True, "wishlist_id": wishlist_id, "message": f"Added {name} to your wishlist"}
 
+@observe(type="tool")
 def remove_from_wishlist_tool(wishlist_id=None, name=None):
     """Remove a plant from the wishlist by ID or name"""
     conn = get_db()
@@ -127,6 +133,7 @@ def remove_from_wishlist_tool(wishlist_id=None, name=None):
     conn.close()
     return {"success": True, "message": f"Removed {plant_name} from your wishlist"}
 
+@observe(type="tool")
 def mark_plant_dead_tool(plant_id):
     """Mark a plant as dead and remove its care schedules"""
     conn = get_db()
@@ -141,6 +148,7 @@ def mark_plant_dead_tool(plant_id):
     conn.close()
     return {"success": True, "message": "Plant marked as dead and care schedules removed"}
 
+@observe(type="tool")
 def get_plants_context():
     """Get all plants, schedules, and wishlist for context"""
     conn = get_db()
